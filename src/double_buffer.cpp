@@ -16,16 +16,17 @@ void DoubleBuffer::write(LogMessage item) {
     size_t pos = write_pos_.fetch_add(1, std::memory_order_acq_rel);
     
     // 如果超出容量则丢弃
-    if (pos >= capacity_) {
+    [[unlikely]]if (pos >= capacity_) {
         return;
     }
-    
-    // 获取当前写入缓冲区索引
-    int buffer_idx = write_buffer_index_.load(std::memory_order_acquire);
-    
+    else{
+            // 获取当前写入缓冲区索引
+        int buffer_idx = write_buffer_index_.load(std::memory_order_acquire);
     // 写入对应位置
-    buffers_[buffer_idx][pos] = std::move(item);
+        buffers_[buffer_idx][pos] = std::move(item);
+    }    
 }
+    
 
 std::vector<LogMessage> DoubleBuffer::read_and_swap() {
     

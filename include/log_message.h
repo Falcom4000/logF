@@ -25,11 +25,6 @@ struct LogMessage {
     std::string_view format;
     std::array<LogVariant, MAX_LOG_ARGS> args;
     uint8_t num_args = 0;
-    
-    // 性能测量字段
-    uint64_t frontend_start_cycles;
-    uint64_t frontend_end_cycles;
-    uint64_t sequence_number;  // 用于丢包检测
 };
 
 }

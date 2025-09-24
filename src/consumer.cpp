@@ -1,7 +1,9 @@
 #include "../include/double_buffer.h"
 #include "../include/log_message.h"
+#include <cstdint>
 #include <iostream>
 #include <fstream>
+#include <sys/types.h>
 #include <vector>
 #include <string>
 #include <thread>
@@ -12,56 +14,21 @@
 #include <iomanip>
 
 namespace logF {
-
-struct PerformanceStats {
-    uint64_t total_messages = 0;
-    uint64_t dropped_messages = 0;
-    uint64_t last_sequence_number = 0;
-    uint64_t min_frontend_latency = UINT64_MAX;
-    uint64_t max_frontend_latency = 0;
-    uint64_t total_frontend_latency = 0;
-    uint64_t min_end_to_end_latency = UINT64_MAX;
-    uint64_t max_end_to_end_latency = 0;
-    uint64_t total_end_to_end_latency = 0;
-    
-    void update_frontend_latency(uint64_t latency) {
-        min_frontend_latency = std::min(min_frontend_latency, latency);
-        max_frontend_latency = std::max(max_frontend_latency, latency);
-        total_frontend_latency += latency;
-    }
-    
-    void update_end_to_end_latency(uint64_t latency) {
-        min_end_to_end_latency = std::min(min_end_to_end_latency, latency);
-        max_end_to_end_latency = std::max(max_end_to_end_latency, latency);
-        total_end_to_end_latency += latency;
-    }
-};
-
 class Consumer {
 public:
     Consumer(DoubleBuffer& double_buffer, const std::string& filepath);
     void start();
-    void stop();
-    const PerformanceStats& get_stats() const { return stats_; }
+    u_int64_t stop();
 
 private:
     void run();
     void format_log(const LogMessage& msg);
-    
-    static uint64_t rdtsc() {
-#ifdef _MSC_VER
-        return __rdtsc();
-#else
-        return __builtin_ia32_rdtsc();
-#endif
-    }
-
     DoubleBuffer& double_buffer_;
     std::string filepath_;
     std::ofstream file_;
     std::atomic<bool> running_ = false;
     std::thread thread_;
-    PerformanceStats stats_;
+    uint64_t message_count_ = 0;
 };
 
 Consumer::Consumer(DoubleBuffer& double_buffer, const std::string& filepath)
@@ -73,66 +40,23 @@ void Consumer::start() {
     thread_ = std::thread(&Consumer::run, this);
 }
 
-void Consumer::stop() {
+uint64_t Consumer::stop() {
     running_.store(false, std::memory_order_release);
     if (thread_.joinable()) {
         thread_.join();
     }
     file_.close();
+    return message_count_;
 }
 
 void Consumer::run() {
     while (running_.load(std::memory_order_acquire)) {
         auto data = double_buffer_.read_and_swap();
-
         for (const auto& msg : data) {
-            uint64_t processing_start = rdtsc();
-            
-            // 检测丢包
-            if (stats_.total_messages > 0) {
-                uint64_t expected_seq = stats_.last_sequence_number + 1;
-                if (msg.sequence_number > expected_seq) {
-                    stats_.dropped_messages += (msg.sequence_number - expected_seq);
-                }
-            }
-            stats_.last_sequence_number = msg.sequence_number;
-            stats_.total_messages++;
-            
-            // 计算前端延迟
-            uint64_t frontend_latency = msg.frontend_end_cycles - msg.frontend_start_cycles;
-            stats_.update_frontend_latency(frontend_latency);
-            
-            // 计算端到端延迟
-            uint64_t end_to_end_latency = processing_start - msg.frontend_start_cycles;
-            stats_.update_end_to_end_latency(end_to_end_latency);
-            
             format_log(msg);
+            message_count_++;
         }
-        
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-    
-    // 处理剩余的消息
-    auto final_data = double_buffer_.read_and_swap();
-    for (const auto& msg : final_data) {
-        uint64_t processing_start = rdtsc();
-        
-        if (stats_.total_messages > 0) {
-            uint64_t expected_seq = stats_.last_sequence_number + 1;
-            if (msg.sequence_number > expected_seq) {
-                stats_.dropped_messages += (msg.sequence_number - expected_seq);
-            }
-        }
-        stats_.last_sequence_number = msg.sequence_number;
-        stats_.total_messages++;
-        
-        uint64_t frontend_latency = msg.frontend_end_cycles - msg.frontend_start_cycles;
-        stats_.update_frontend_latency(frontend_latency);
-        
-        uint64_t end_to_end_latency = processing_start - msg.frontend_start_cycles;
-        stats_.update_end_to_end_latency(end_to_end_latency);
-        
-        format_log(msg);
+        std::this_thread::yield();
     }
 }
 
