@@ -11,7 +11,7 @@ CharRingBuffer::CharRingBuffer(size_t capacity)
     : capacity_(capacity), buffer_(capacity) {}
 
 void CharRingBuffer::append(const char* data, size_t len) {
-    if (write_pos_ + len >= capacity_) {
+    if (write_pos_ + len >= capacity_) [[unlikely]] {
         // Buffer would overflow, this shouldn't happen in normal usage
         // For safety, just truncate
         len = capacity_ - write_pos_ - 1;
@@ -21,13 +21,13 @@ void CharRingBuffer::append(const char* data, size_t len) {
 }
 
 void CharRingBuffer::append(const char* str) {
-    if (str) {
+    if (str) [[likely]] {
         append(str, std::strlen(str));
     }
 }
 
 void CharRingBuffer::append(char c) {
-    if (write_pos_ < capacity_ - 1) {
+    if (write_pos_ < capacity_ - 1) [[likely]] {
         buffer_[write_pos_++] = c;
     }
 }
@@ -35,7 +35,7 @@ void CharRingBuffer::append(char c) {
 void CharRingBuffer::append_number(long long num) {
     char temp[32];
     int len = std::snprintf(temp, sizeof(temp), "%lld", num);
-    if (len > 0) {
+    if (len > 0) [[likely]] {
         append(temp, len);
     }
 }
@@ -43,13 +43,13 @@ void CharRingBuffer::append_number(long long num) {
 void CharRingBuffer::append_number(double num) {
     char temp[32];
     int len = std::snprintf(temp, sizeof(temp), "%g", num);
-    if (len > 0) {
+    if (len > 0) [[likely]] {
         append(temp, len);
     }
 }
 
 void CharRingBuffer::flush_to_mmap(MMapFileWriter& writer) {
-    if (write_pos_ > 0) {
+    if (write_pos_ > 0) [[likely]] {
         writer.write(buffer_.data(), write_pos_);
         writer.write("\n", 1);
     }

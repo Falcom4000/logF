@@ -12,7 +12,7 @@ Consumer::Consumer(DoubleBuffer& double_buffer, const std::string& filepath)
 
 void Consumer::start() {
     running_.store(true, std::memory_order_release);
-    if (!mmap_writer_.open()) {
+    if (!mmap_writer_.open()) [[unlikely]] {
         std::cerr << "Failed to open mmap writer" << std::endl;
         return;
     }
@@ -44,7 +44,7 @@ void Consumer::run() {
 
 void Consumer::format_log(const LogMessage& msg) {
     // Check if we need to flush the buffer (leave some space for current message)
-    if (!char_buffer_.has_space(256)) {
+    if (!char_buffer_.has_space(256)) [[unlikely]] {
         char_buffer_.flush_to_mmap(mmap_writer_);
         char_buffer_.clear();
     }
@@ -57,7 +57,11 @@ void Consumer::format_log(const LogMessage& msg) {
     // Append all components directly to char buffer
     char_buffer_.append(time_buffer);
     char_buffer_.append(" ");
-    char_buffer_.append(msg.file ? msg.file : "unknown");
+    if (msg.file) [[likely]] {
+        char_buffer_.append(msg.file);
+    } else [[unlikely]] {
+        char_buffer_.append("unknown");
+    }
     char_buffer_.append(":");
     char_buffer_.append_number(static_cast<long long>(msg.line));
     char_buffer_.append(" ");

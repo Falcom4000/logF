@@ -47,13 +47,13 @@ MMapFileWriter& MMapFileWriter::operator=(MMapFileWriter&& other) noexcept {
 bool MMapFileWriter::open() {
     // Open file with read/write permissions, create if doesn't exist, truncate to clear content
     fd_ = ::open(filepath_.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
-    if (fd_ == -1) {
+    if (fd_ == -1) [[unlikely]] {
         std::cerr << "Failed to open file " << filepath_ << ": " << std::strerror(errno) << std::endl;
         return false;
     }
     
     // Expand file to desired size (file was truncated by O_TRUNC)
-    if (ftruncate(fd_, file_size_) == -1) {
+    if (ftruncate(fd_, file_size_) == -1) [[unlikely]] {
         std::cerr << "Failed to expand file: " << std::strerror(errno) << std::endl;
         ::close(fd_);
         fd_ = -1;
@@ -65,7 +65,7 @@ bool MMapFileWriter::open() {
                                            PROT_READ | PROT_WRITE, 
                                            MAP_SHARED, fd_, 0));
     
-    if (mapped_memory_ == MAP_FAILED) {
+    if (mapped_memory_ == MAP_FAILED) [[unlikely]] {
         std::cerr << "Failed to mmap file: " << std::strerror(errno) << std::endl;
         mapped_memory_ = nullptr;
         ::close(fd_);
@@ -86,8 +86,8 @@ void MMapFileWriter::close() {
         
         // Truncate file to actual content size
         size_t final_pos = write_pos_.load();
-        if (final_pos > 0 && final_pos < file_size_) {
-            if (ftruncate(fd_, final_pos) == -1) {
+        if (final_pos > 0 && final_pos < file_size_) [[likely]] {
+            if (ftruncate(fd_, final_pos) == -1) [[unlikely]] {
                 std::cerr << "Warning: Failed to truncate file to final size: " 
                           << std::strerror(errno) << std::endl;
             }
@@ -107,16 +107,16 @@ void MMapFileWriter::close() {
 }
 
 bool MMapFileWriter::write(const char* data, size_t len) {
-    if (!is_open() || len == 0) {
+    if (!is_open() || len == 0) [[unlikely]] {
         return false;
     }
     
     size_t current_pos = write_pos_.load(std::memory_order_acquire);
     
     // Check if we need to expand the file
-    if (current_pos + len > file_size_) {
+    if (current_pos + len > file_size_) [[unlikely]] {
         size_t new_size = next_power_of_2(current_pos + len);
-        if (!expand_file(new_size)) {
+        if (!expand_file(new_size)) [[unlikely]] {
             return false;
         }
     }
@@ -128,9 +128,9 @@ bool MMapFileWriter::write(const char* data, size_t len) {
         current_pos = expected_pos;
         
         // Recheck if we need expansion with the updated position
-        if (current_pos + len > file_size_) {
+        if (current_pos + len > file_size_) [[unlikely]] {
             size_t new_size = next_power_of_2(current_pos + len);
-            if (!expand_file(new_size)) {
+            if (!expand_file(new_size)) [[unlikely]] {
                 return false;
             }
         }
@@ -150,18 +150,18 @@ void MMapFileWriter::flush() {
 }
 
 bool MMapFileWriter::expand_file(size_t new_size) {
-    if (new_size <= file_size_) {
+    if (new_size <= file_size_) [[unlikely]] {
         return true; // No expansion needed
     }
     
     // Unmap current memory
-    if (munmap(mapped_memory_, file_size_) == -1) {
+    if (munmap(mapped_memory_, file_size_) == -1) [[unlikely]] {
         std::cerr << "Failed to unmap memory: " << std::strerror(errno) << std::endl;
         return false;
     }
     
     // Expand file
-    if (ftruncate(fd_, new_size) == -1) {
+    if (ftruncate(fd_, new_size) == -1) [[unlikely]] {
         std::cerr << "Failed to expand file to " << new_size << " bytes: " 
                   << std::strerror(errno) << std::endl;
         
@@ -177,7 +177,7 @@ bool MMapFileWriter::expand_file(size_t new_size) {
                                            PROT_READ | PROT_WRITE, 
                                            MAP_SHARED, fd_, 0));
     
-    if (mapped_memory_ == MAP_FAILED) {
+    if (mapped_memory_ == MAP_FAILED) [[unlikely]] {
         std::cerr << "Failed to remap expanded file: " << std::strerror(errno) << std::endl;
         mapped_memory_ = nullptr;
         return false;
