@@ -81,8 +81,8 @@ void Consumer::format_log(const LogMessage& msg) {
         // Append the argument value
         std::visit([&](auto&& value) {
             using T = std::decay_t<decltype(value)>;
-            if constexpr (std::is_same_v<T, std::string>) {
-                char_buffer_.append(value.c_str());
+            if constexpr (std::is_same_v<T, const char*>) {
+                char_buffer_.append(value);
             } else if constexpr (std::is_same_v<T, double>) {
                 char_buffer_.append_number(value);
             } else {

@@ -9,7 +9,7 @@
 
 namespace logF {
 
-constexpr size_t MAX_LOG_ARGS = 10;
+constexpr size_t MAX_LOG_ARGS = 3;
 
 enum class LogLevel {
     INFO,

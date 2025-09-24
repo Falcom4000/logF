@@ -9,7 +9,7 @@
 #include <iomanip>
 
 constexpr int NUM_THREADS = 8;
-constexpr int NUM_MESSAGES_PER_THREAD = 100000;
+constexpr int NUM_MESSAGES_PER_THREAD = 1000000;
 
 // CPU cycle measurement using rdtsc
 inline uint64_t rdtsc() {
@@ -27,7 +27,7 @@ double calculate_p99(std::vector<uint64_t>& data) {
 }
 
 int main() {
-    logF::DoubleBuffer double_buffer(8192 * 10 * 10 *5);
+    logF::DoubleBuffer double_buffer(1024 * 1024 * 8);
     logF::Logger logger(double_buffer);
     logF::Consumer consumer(double_buffer, "benchmark_log.txt");
     
