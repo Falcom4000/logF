@@ -39,11 +39,14 @@ public:
     bool is_open() const { return fd_ != -1 && mapped_memory_ != nullptr; }
 
 private:
+    // 非原子变量
     std::string filepath_;
     int fd_ = -1;
     char* mapped_memory_ = nullptr;
     size_t file_size_ = 0;
-    std::atomic<size_t> write_pos_{0};
+    
+    // 原子变量64字节对齐
+    alignas(64) std::atomic<size_t> write_pos_{0};
     
     // Expand the file and remap memory when needed
     bool expand_file(size_t new_size);

@@ -22,10 +22,13 @@ public:
     BufferView read_and_swap();
 
 private:
+    // 非原子变量放在前面
     std::vector<LogMessage> buffers_[2];
-    std::atomic<int> write_buffer_index_{0};    // 0 或 1，指示生产者当前写入哪个buffer
-    std::atomic<size_t> write_pos_{0};          // 当前写入buffer中的位置索引
     size_t capacity_;
+    
+    // 原子变量使用64字节对齐，避免虚假共享
+    alignas(64) std::atomic<int> write_buffer_index_{0};    // 0 或 1，指示生产者当前写入哪个buffer
+    alignas(64) std::atomic<size_t> write_pos_{0};          // 当前写入buffer中的位置索引
 };
 
 }

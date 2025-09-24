@@ -20,13 +20,17 @@ public:
 private:
     void run();
     void format_log(const LogMessage& msg);
+    
+    // 非原子变量
     DoubleBuffer& double_buffer_;
     std::string filepath_;
     MMapFileWriter mmap_writer_;
-    std::atomic<bool> running_ = false;
     std::thread thread_;
     uint64_t message_count_ = 0;
     CharRingBuffer char_buffer_;
+    
+    // 原子变量64字节对齐
+    alignas(64) std::atomic<bool> running_ = false;
 };
 
 }
