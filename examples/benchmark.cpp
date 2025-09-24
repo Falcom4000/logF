@@ -8,8 +8,8 @@
 #include <immintrin.h>
 #include <iomanip>
 
-constexpr int NUM_THREADS = 8;
-constexpr int NUM_MESSAGES_PER_THREAD = 1500000;
+constexpr int NUM_THREADS = 4;
+constexpr int NUM_MESSAGES_PER_THREAD = 2000000;
 
 // CPU cycle measurement using rdtsc
 inline uint64_t rdtsc() {

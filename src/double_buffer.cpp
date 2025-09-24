@@ -1,4 +1,5 @@
 #include "../include/double_buffer.h"
+#include <atomic>
 #include <utility>
 #include <shared_mutex>
 #include <mutex>
@@ -12,16 +13,14 @@ DoubleBuffer::DoubleBuffer(size_t capacity) : capacity_(capacity) {
 
 void DoubleBuffer::write(LogMessage item) {
     
-    // 优化: 只使用relaxed内存序，减少内存屏障开销
-    size_t pos = write_pos_.fetch_add(1, std::memory_order_relaxed);
+    size_t pos = write_pos_.fetch_add(1, std::memory_order_acq_rel);
     
     // 如果超出容量则丢弃
     [[unlikely]]if (pos >= capacity_) {
         return;
     }
     
-    // 获取当前写入缓冲区索引 - 使用relaxed内存序
-    int buffer_idx = write_buffer_index_.load(std::memory_order_relaxed);
+    int buffer_idx = write_buffer_index_.load(std::memory_order_release);
     
     // 写入对应位置
     buffers_[buffer_idx][pos] = std::move(item);   

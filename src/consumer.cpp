@@ -95,16 +95,18 @@ void Consumer::format_log(const LogMessage& msg) {
         }
         
         // Append the argument value
-        std::visit([&](auto&& value) {
-            using T = std::decay_t<decltype(value)>;
-            if constexpr (std::is_same_v<T, const char*>) {
-                char_buffer_.append(value);
-            } else if constexpr (std::is_same_v<T, double>) {
-                char_buffer_.append_number(value);
-            } else {
-                char_buffer_.append_number(static_cast<long long>(value));
-            }
-        }, msg.args[arg_index]);
+        const auto& arg = msg.args[arg_index];
+        switch (arg.get_type()) {
+            case LogVariant::Type::CSTR:
+                char_buffer_.append(arg.as_cstr());
+                break;
+            case LogVariant::Type::DOUBLE:
+                char_buffer_.append_number(arg.as_double());
+                break;
+            case LogVariant::Type::INT:
+                char_buffer_.append_number(static_cast<long long>(arg.as_int()));
+                break;
+        }
         
         arg_index++;
         last_pos = find_pos + 1;

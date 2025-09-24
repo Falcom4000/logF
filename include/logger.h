@@ -19,8 +19,8 @@ public:
         LogMessage msg{};  // 零初始化
         msg.timestamp = std::chrono::system_clock::now();
         msg.file = file;
-        msg.line = line;
-        msg.level = level;
+        msg.line = static_cast<uint16_t>(line > 65535 ? 65535 : line);  // 限制在uint16_t范围内
+        msg.level = static_cast<uint8_t>(level);
         msg.format = format;
         
         size_t arg_idx = 0;
