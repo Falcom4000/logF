@@ -6,9 +6,26 @@
 
 namespace logF {
 
+// 线程本地时间缓存
+struct TimeCache {
+    std::time_t cached_seconds = 0;
+    char cached_time_str[32] = {0};
+    
+    // 快速更新时间字符串，避免重复的strftime调用
+    void update_time_string(std::time_t new_seconds) {
+        if (new_seconds == cached_seconds) return;
+        
+        // 只有在秒数真正变化时才调用昂贵的时间格式化
+        std::strftime(cached_time_str, sizeof(cached_time_str), 
+                      "%Y-%m-%d %X", std::localtime(&new_seconds));
+        cached_seconds = new_seconds;
+    }
+};
+thread_local TimeCache time_cache;
+
 Consumer::Consumer(DoubleBuffer& double_buffer, const std::string& filepath)
     : double_buffer_(double_buffer), filepath_(filepath), mmap_writer_(filepath), 
-      char_buffer_(65536) {}
+      char_buffer_(65536*2) {}
 
 void Consumer::start() {
     running_.store(true, std::memory_order_release);
@@ -49,13 +66,12 @@ void Consumer::format_log(const LogMessage& msg) {
         char_buffer_.clear();
     }
     
-    // Format timestamp directly into char buffer
-    char time_buffer[32];
+    // 高性能时间格式化 - 缓存避免重复的时区转换和strftime调用
     auto in_time_t = std::chrono::system_clock::to_time_t(msg.timestamp);
-    std::strftime(time_buffer, sizeof(time_buffer), "%Y-%m-%d %X", std::localtime(&in_time_t));
+    time_cache.update_time_string(in_time_t);
     
     // Append all components directly to char buffer
-    char_buffer_.append(time_buffer);
+    char_buffer_.append(time_cache.cached_time_str);
     char_buffer_.append(" ");
     if (msg.file) [[likely]] {
         char_buffer_.append(msg.file);

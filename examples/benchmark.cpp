@@ -9,7 +9,7 @@
 #include <iomanip>
 
 constexpr int NUM_THREADS = 8;
-constexpr int NUM_MESSAGES_PER_THREAD = 1000000;
+constexpr int NUM_MESSAGES_PER_THREAD = 1500000;
 
 // CPU cycle measurement using rdtsc
 inline uint64_t rdtsc() {
