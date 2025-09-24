@@ -11,11 +11,16 @@
 constexpr int NUM_THREADS = 4;
 constexpr int NUM_MESSAGES_PER_THREAD = 4000000;
 
-// CPU cycle measurement using rdtsc
-inline uint64_t rdtsc() {
-    return __rdtsc();
+static inline uint64_t rdtscp() {
+    uint64_t low, high;
+    // a = low, d = high, c = processor id
+    __asm__ __volatile__ (
+        "rdtscp"
+        : "=a"(low), "=d"(high)
+        :: "%rcx"
+    );
+    return (high << 32) | low;
 }
-
 // Function to calculate P99 latency
 double calculate_p99(std::vector<uint64_t>& data) {
     if (data.empty()) return 0.0;
@@ -45,9 +50,9 @@ int main() {
             thread_latencies.reserve(NUM_MESSAGES_PER_THREAD);
             
             for (int j = 0; j < NUM_MESSAGES_PER_THREAD; ++j) {
-                uint64_t start_cycles = rdtsc();
-                LOG_INFO(logger, "Thread %: message %", i, j);
-                uint64_t end_cycles = rdtsc();
+                uint64_t start_cycles = rdtscp();
+                LOG_INFO(logger, "Thread %: message %, pi = %", i, j, 3.14159 + j);
+                uint64_t end_cycles = rdtscp();
                 
                 thread_latencies.push_back(end_cycles - start_cycles);
             }

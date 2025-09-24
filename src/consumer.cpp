@@ -5,23 +5,38 @@
 #include <ctime>
 
 namespace logF {
-
-// 线程本地时间缓存
 struct TimeCache {
-    std::time_t cached_seconds = 0;
-    char cached_time_str[32] = {0};
+    int64_t cached_milliseconds = 0;
+    char cached_time_str[32] = {0};  // MM-DD HH:MM:SS.sss 格式预留足够空间
     
-    // 快速更新时间字符串，避免重复的strftime调用
-    void update_time_string(std::time_t new_seconds) {
-        if (new_seconds == cached_seconds) return;
+    // 只在毫秒变化时重新格式化时间字符串
+    void update_time_string(const std::chrono::system_clock::time_point& timestamp) {
+        // 获取毫秒级时间戳
+        auto ms_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(
+            timestamp.time_since_epoch()).count();
         
-        // 只有在秒数真正变化时才调用昂贵的时间格式化
-        std::strftime(cached_time_str, sizeof(cached_time_str), 
-                      "%Y-%m-%d %X", std::localtime(&new_seconds));
-        cached_seconds = new_seconds;
+        if (ms_since_epoch == cached_milliseconds) return;
+        
+        auto seconds_since_epoch = ms_since_epoch / 1000;
+        int milliseconds = static_cast<int>(ms_since_epoch - seconds_since_epoch * 1000);
+        
+        std::time_t seconds = static_cast<std::time_t>(seconds_since_epoch);
+        
+        // 获取本地时间
+        std::tm* local_tm = std::localtime(&seconds);
+        
+        // 使用strftime格式化基本时间部分
+        char base_time[16];
+        std::strftime(base_time, sizeof(base_time), "%m-%d %H:%M:%S", local_tm);
+        
+        // 添加毫秒部分
+        std::snprintf(cached_time_str, sizeof(cached_time_str),
+                     "%s.%03d", base_time, milliseconds);
+        
+        cached_milliseconds = ms_since_epoch;
     }
 };
-thread_local TimeCache time_cache;
+TimeCache time_cache;
 
 Consumer::Consumer(DoubleBuffer& double_buffer, const std::string& filepath)
     : double_buffer_(double_buffer), filepath_(filepath), mmap_writer_(filepath), 
@@ -66,9 +81,7 @@ void Consumer::format_log(const LogMessage& msg) {
         char_buffer_.clear();
     }
     
-    // 高性能时间格式化 - 缓存避免重复的时区转换和strftime调用
-    auto in_time_t = std::chrono::system_clock::to_time_t(msg.timestamp);
-    time_cache.update_time_string(in_time_t);
+    time_cache.update_time_string(msg.timestamp);
     
     // Append all components directly to char buffer
     char_buffer_.append(time_cache.cached_time_str);
