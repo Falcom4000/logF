@@ -3,7 +3,8 @@
 #include "variant.h"
 #include <chrono>
 #include <string>
-#include <vector>
+#include <string_view>
+#include <array>
 #include <cstdint>
 
 namespace logF {
@@ -21,8 +22,9 @@ struct LogMessage {
     const char* file;
     int line;
     LogLevel level;
-    std::string format;
-    std::vector<LogVariant> args;
+    std::string_view format;
+    std::array<LogVariant, MAX_LOG_ARGS> args;
+    uint8_t num_args = 0;
     
     // 性能测量字段
     uint64_t frontend_start_cycles;

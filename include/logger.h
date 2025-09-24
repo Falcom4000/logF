@@ -13,6 +13,8 @@ public:
     
     template<typename... Args>
     void log(LogLevel level, const char* file, int line, const char* format, Args&&... args) {
+        static_assert(sizeof...(args) <= MAX_LOG_ARGS, "Too many log arguments");
+
         uint64_t start_cycles = rdtsc();
         
         LogMessage msg;
@@ -24,8 +26,9 @@ public:
         msg.frontend_start_cycles = start_cycles;
         msg.sequence_number = next_sequence_number_.fetch_add(1, std::memory_order_relaxed);
         
-        msg.args.reserve(sizeof...(args));
-        (msg.args.push_back(std::forward<Args>(args)), ...);
+        size_t arg_idx = 0;
+        ( (msg.args[arg_idx++] = std::forward<Args>(args)), ... );
+        msg.num_args = sizeof...(args);
 
         msg.frontend_end_cycles = rdtsc();
         double_buffer_.write(std::move(msg));
