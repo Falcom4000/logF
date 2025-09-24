@@ -6,6 +6,11 @@
 #include <string>
 #include "variant.h"
 
+// Forward declaration
+namespace logF {
+    class MMapFileWriter;
+}
+
 namespace logF {
 
 class RingBuffer {
@@ -30,7 +35,7 @@ public:
     void append(char c);
     void append_number(long long num);
     void append_number(double num);
-    void flush_to_file(std::ofstream& file);
+    void flush_to_mmap(MMapFileWriter& writer);
     void clear();
     size_t size() const { return write_pos_; }
     bool has_space(size_t needed) const { return write_pos_ + needed < capacity_; }

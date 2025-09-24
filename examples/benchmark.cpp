@@ -9,7 +9,7 @@
 #include <iomanip>
 
 constexpr int NUM_THREADS = 8;
-constexpr int NUM_MESSAGES_PER_THREAD = 1000000;
+constexpr int NUM_MESSAGES_PER_THREAD = 100000;
 
 // CPU cycle measurement using rdtsc
 inline uint64_t rdtsc() {
@@ -65,7 +65,7 @@ int main() {
     std::chrono::duration<double> elapsed = end_time - start_time;
 
     // Wait for the consumer to finish writing
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    std::this_thread::sleep_for(std::chrono::seconds(2));
     uint64_t processed_messages = consumer.stop();
 
     uint64_t total_messages = NUM_THREADS * NUM_MESSAGES_PER_THREAD;

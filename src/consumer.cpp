@@ -1,21 +1,21 @@
 #include "../include/consumer.h"
 #include <iostream>
-#include <sys/types.h>
-#include <vector>
 #include <chrono>
 #include <variant>
-#include <sstream>
-#include <iomanip>
 #include <ctime>
 
 namespace logF {
 
 Consumer::Consumer(DoubleBuffer& double_buffer, const std::string& filepath)
-    : double_buffer_(double_buffer), filepath_(filepath), char_buffer_(65536) {}
+    : double_buffer_(double_buffer), filepath_(filepath), mmap_writer_(filepath), 
+      char_buffer_(65536) {}
 
 void Consumer::start() {
     running_.store(true, std::memory_order_release);
-    file_.open(filepath_, std::ios::out | std::ios::app);
+    if (!mmap_writer_.open()) {
+        std::cerr << "Failed to open mmap writer" << std::endl;
+        return;
+    }
     thread_ = std::thread(&Consumer::run, this);
 }
 
@@ -24,7 +24,7 @@ uint64_t Consumer::stop() {
     if (thread_.joinable()) {
         thread_.join();
     }
-    file_.close();
+    mmap_writer_.close();
     return message_count_;
 }
 
@@ -38,14 +38,14 @@ void Consumer::run() {
         std::this_thread::yield();
     }
     // Flush any remaining data when stopping
-    char_buffer_.flush_to_file(file_);
+    char_buffer_.flush_to_mmap(mmap_writer_);
     char_buffer_.clear();
 }
 
 void Consumer::format_log(const LogMessage& msg) {
     // Check if we need to flush the buffer (leave some space for current message)
     if (!char_buffer_.has_space(256)) {
-        char_buffer_.flush_to_file(file_);
+        char_buffer_.flush_to_mmap(mmap_writer_);
         char_buffer_.clear();
     }
     
