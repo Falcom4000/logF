@@ -1,5 +1,5 @@
 #include "../include/logger.h"
-#include "../src/consumer.cpp"
+#include "../include/consumer.h"
 #include <thread>
 #include <vector>
 

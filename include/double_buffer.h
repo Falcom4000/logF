@@ -7,11 +7,19 @@
 
 namespace logF {
 
+struct BufferView {
+    const LogMessage* data;
+    size_t size;
+    
+    const LogMessage* begin() const { return data; }
+    const LogMessage* end() const { return data + size; }
+};
+
 class DoubleBuffer {
 public:
     DoubleBuffer(size_t capacity);
     void write(LogMessage item);
-    std::vector<LogMessage> read_and_swap();
+    BufferView read_and_swap();
 
 private:
     std::vector<LogMessage> buffers_[2];

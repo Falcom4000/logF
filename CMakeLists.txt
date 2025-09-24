@@ -9,7 +9,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3")
 
 include_directories(include)
 
-add_library(logF_lib src/logger.cpp src/double_buffer.cpp)
+add_library(logF_lib src/logger.cpp src/double_buffer.cpp src/ring_buffer.cpp src/consumer.cpp)
 
 add_executable(example examples/main.cpp)
 target_link_libraries(example logF_lib)
