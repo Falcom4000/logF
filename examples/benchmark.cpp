@@ -9,7 +9,7 @@
 #include <iomanip>
 
 constexpr int NUM_THREADS = 4;
-constexpr int NUM_MESSAGES_PER_THREAD = 4000000;
+constexpr int NUM_MESSAGES_PER_THREAD = 100000;
 
 static inline uint64_t rdtscp() {
     uint64_t low, high;
@@ -32,7 +32,7 @@ double calculate_p99(std::vector<uint64_t>& data) {
 }
 
 int main() {
-    logF::DoubleBuffer double_buffer(1024 * 1024 * 64);
+    logF::DoubleBuffer double_buffer(1024 * 1024 * 8 );
     logF::Logger logger(double_buffer);
     logF::Consumer consumer(double_buffer, "benchmark_log.txt");
     
@@ -53,8 +53,8 @@ int main() {
                 uint64_t start_cycles = rdtscp();
                 LOG_INFO(logger, "Thread %: message %, pi = %", i, j, 3.14159 + j);
                 uint64_t end_cycles = rdtscp();
-                
                 thread_latencies.push_back(end_cycles - start_cycles);
+                std::this_thread::sleep_for(std::chrono::nanoseconds(100));
             }
             
             // Move local latencies to global storage
@@ -69,7 +69,10 @@ int main() {
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end_time - start_time;
 
-    // 等待Consumer处理完缓冲区中的消息（端到端时间测量）
+    // Wait for the consumer to finish writing
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    uint64_t processed_messages = consumer.stop();
+
     uint64_t total_messages = NUM_THREADS * NUM_MESSAGES_PER_THREAD;
     std::cout << "等待Consumer处理完缓冲区中的消息..." << std::endl;
     
