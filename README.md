@@ -187,6 +187,10 @@ int main() {
 ### 延迟分布
 
 ![latency_distribution](./pics/latency_distribution.png)
+
+### 火焰图
+
+![flame_graph](./pics/logF_benchmark.svg)
 ## 🔧 编译和安装
 
 ### 系统要求
