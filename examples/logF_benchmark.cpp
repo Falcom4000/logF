@@ -38,13 +38,18 @@ double calculate_p99(std::vector<uint64_t>& data) {
 }
 
 int main() {
-    logF::DoubleBuffer double_buffer(1024 * 32 );
-    logF::Logger logger(double_buffer);
-    logF::Consumer consumer(double_buffer, "logs", 1024 * 1024 * 32);
-    
+    logF::MpscRingBuffer<logF::LogMessage> ring_buffer(1024 * 64);
+    logF::Logger logger(ring_buffer);
+    logF::Consumer consumer(ring_buffer, "logs", 1024 * 1024 * 32);
+
     // Storage for all latency data from all threads
     std::vector<std::vector<uint64_t>> all_latencies(NUM_THREADS);
-
+    // 删除./logs目录下的所有文件
+    int result = system("rm -rf ./logs/*");
+        if (result != 0) {
+            std::cerr << "Failed to clear logs directory." << std::endl;
+            return 1;
+        }
     consumer.start();
 
     auto start_time = std::chrono::high_resolution_clock::now();

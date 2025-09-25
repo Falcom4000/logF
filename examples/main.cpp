@@ -4,9 +4,9 @@
 #include <vector>
 
 int main() {
-    logF::DoubleBuffer double_buffer(8192);
-    logF::Logger logger(double_buffer);
-    logF::Consumer consumer(double_buffer, "logs");
+    logF::MpscRingBuffer<logF::LogMessage> ring_buffer(8192);
+    logF::Logger logger(ring_buffer);
+    logF::Consumer consumer(ring_buffer, "logs", 1024 * 1024 * 32);
 
     consumer.start();
 

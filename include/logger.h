@@ -1,7 +1,7 @@
 #pragma once
 
 #include "log_message.h"
-#include "double_buffer.h"
+#include "mpsc_ring_buffer.h"
 #include <cstdint>
 #include <utility>
 #include <cstring>
@@ -10,28 +10,15 @@ namespace logF {
 
 class Logger {
 public:
-    Logger(DoubleBuffer& double_buffer);
+    Logger(MpscRingBuffer<LogMessage>& ring_buffer) : ring_buffer_(ring_buffer) {}
     
     template<typename... Args>
     void log(LogLevel level, const char* file, int line, const char* format, Args&&... args) {
-        static_assert(sizeof...(args) <= MAX_LOG_ARGS, "Too many log arguments");
-
-        double_buffer_.write([&](LogMessage& msg) {
-            msg.timestamp = std::chrono::system_clock::now();
-            msg.file = file;
-            msg.line = static_cast<uint16_t>(line > 65535 ? 65535 : line);
-            msg.level = static_cast<uint8_t>(level);
-            msg.format = format;
-            
-            size_t arg_idx = 0;
-            ( (msg.args[arg_idx++] = std::forward<Args>(args)), ... );
-            msg.num_args = sizeof...(args);
-        });
+        ring_buffer_.emplace(file, static_cast<uint16_t>(line), level, format, std::forward<Args>(args)...);
     }
 
 private:
-    DoubleBuffer& double_buffer_;
-    
+    MpscRingBuffer<LogMessage>& ring_buffer_;
 };
 
 }

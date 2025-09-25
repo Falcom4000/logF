@@ -39,8 +39,8 @@ struct TimeCache {
 };
 TimeCache time_cache;
 
-Consumer::Consumer(DoubleBuffer& double_buffer, const std::string& log_dir, size_t mmap_file_size)
-    : double_buffer_(double_buffer), mmap_writer_(log_dir, mmap_file_size), 
+Consumer::Consumer(MpscRingBuffer<LogMessage>& ring_buffer, const std::string& log_dir, size_t mmap_file_size)
+    : ring_buffer_(ring_buffer), mmap_writer_(log_dir, mmap_file_size), 
       char_buffer_(65536*2) {}
 
 void Consumer::start() {
@@ -64,9 +64,9 @@ void Consumer::stop() {
 void Consumer::run() {
     uint64_t local_count = 0;
     while (running_.load(std::memory_order_acquire)) {
-        auto buffer_view = double_buffer_.read_and_swap();
-        if( buffer_view.size == 0) {
-            if(local_count < 50) {
+        auto buffer_view = ring_buffer_.read();
+        if (buffer_view.size() == 0) {
+            if (local_count < 50) {
                 local_count++;
                 continue;
             }
@@ -78,7 +78,6 @@ void Consumer::run() {
             format_log(msg);
             message_count_++;
         }
-        
     }
     // Flush any remaining data when stopping
     char_buffer_.flush_to_mmap(mmap_writer_);

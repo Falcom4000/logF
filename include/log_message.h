@@ -25,6 +25,19 @@ struct LogMessage {
     uint16_t line;                                    // 2 bytes
     uint8_t level;                                    // 1 byte
     uint8_t num_args;                                 // 1 byte
+
+    LogMessage() : file(nullptr), format(""), line(0), level(0), num_args(0) {
+        args.fill(LogVariant());
+    }
+    // 构造函数
+   template<typename... Args>
+    LogMessage(const char* file, uint16_t line, LogLevel level, const char* format, Args&&... args)
+        : file(file), format(format), line(line), level(static_cast<uint8_t>(level)), num_args(sizeof...(args)) {
+        static_assert(sizeof...(args) <= MAX_LOG_ARGS, "Too many log arguments");
+        this->args.fill(LogVariant());
+        size_t arg_idx = 0;
+        ( (this->args[arg_idx++] = std::forward<Args>(args)), ... );
+    }
 };
 
 }
