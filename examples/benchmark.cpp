@@ -9,7 +9,7 @@
 #include <iomanip>
 
 constexpr int NUM_THREADS = 4;
-constexpr int NUM_MESSAGES_PER_THREAD = 100000;
+constexpr int NUM_MESSAGES_PER_THREAD = 1000000;
 
 static inline uint64_t rdtscp() {
     uint64_t low, high;
@@ -32,7 +32,7 @@ double calculate_p99(std::vector<uint64_t>& data) {
 }
 
 int main() {
-    logF::DoubleBuffer double_buffer(1024 * 1024 * 8 );
+    logF::DoubleBuffer double_buffer(1024 * 1024);
     logF::Logger logger(double_buffer);
     logF::Consumer consumer(double_buffer, "benchmark_log.txt");
     
