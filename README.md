@@ -4,7 +4,7 @@
 
 ## ✨ 特性
 
-- **超低延迟**: 前端平均320个CPU周期，P99延迟950个周期
+- **超低延迟**: 前端平均307个CPU周期，P99延迟950个周期
 - **高吞吐量**: 写入性能达150k msg/sec
 - **无锁设计**: 基于原子操作的双缓冲区实现
 - **类型安全**: 编译期类型检查，运行时高效访问，支持三个可变参数
@@ -34,18 +34,21 @@ LogF的设计遵循"**前端极速，后端异步**"的核心理念：
 
 ## 🏛️ 设计架构
 
-```text
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Application   │    │   Logger Thread  │    │  Consumer Thread│
-│    Threads      │    │                  │    │                 │
-├─────────────────┤    ├──────────────────┤    ├─────────────────┤
-│                 │    │                  │    │                 │
-│ LOG_INFO(...)   │───▶│  DoubleBuffer    │───▶│  Format & Write │
-│ LOG_WARNING(...)│    │                  │    │                 │
-│ LOG_ERROR(...)  │    │  - Buffer A      │    │ - CharRingBuffer│ 
-│                 │    │  - Buffer B      │    │ - MMapWriter    │
-│                 │    │  - Atomic Swap   │    │ - Disk I/O      │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+```mermaid
+graph LR
+    subgraph Application Threads
+        A["LOG_INFO(...)\nLOG_WARNING(...)\nLOG_ERROR(...)"]
+    end
+
+    subgraph "Logger Thread"
+        B["DoubleBuffer\n- Buffer A\n- Buffer B\n- Atomic Swap"]
+    end
+
+    subgraph "Consumer Thread"
+        C["Format & Write\n- CharRingBuffer\n- MMapWriter\n- Disk I/O"]
+    end
+
+    A --> B --> C
 ```
 
 ### 关键组件
@@ -93,18 +96,19 @@ struct LogVariant {  // 9字节 (使用__attribute__((packed)))
 
 
 
-## �📖 使用示例
+## 📖 使用示例
 
 ### 基本用法
 
 ```cpp
-#include "logger.h"
+#include "../include/logger.h"
+#include "../include/consumer.h"
 
 int main() {
-    // 创建8MB双缓冲区
-    logF::DoubleBuffer double_buffer(1024 * 1024 * 8);
+    // 创建8KB双缓冲区
+    logF::DoubleBuffer double_buffer(1024 * 8);
     logF::Logger logger(double_buffer);
-    logF::Consumer consumer(double_buffer, "app.log");
+    logF::Consumer consumer(double_buffer, "logs");
     
     // 启动消费者线程
     consumer.start();
@@ -123,6 +127,8 @@ int main() {
 ### 多线程环境
 
 ```cpp
+#include "../include/logger.h"
+#include "../include/consumer.h"
 #include <thread>
 #include <vector>
 
@@ -135,7 +141,7 @@ void worker_thread(logF::Logger& logger, int thread_id) {
 int main() {
     logF::DoubleBuffer double_buffer(1024 * 1024 * 64);  // 64MB缓冲区
     logF::Logger logger(double_buffer);
-    logF::Consumer consumer(double_buffer, "multi_thread.log");
+    logF::Consumer consumer(double_buffer, "logs");
     
     consumer.start();
     
@@ -169,7 +175,7 @@ int main() {
 
 | 指标 | 数值 | 备注 |
 |------|------|------|
-| **前端延迟 (平均)** | 320 CPU周期 | ~85ns @ 3.7GHz |
+| **前端延迟 (平均)** | 307 CPU周期 | ~80ns @ 3.7GHz |
 | **前端延迟 (P99)** | 950 CPU周期 | ~265ns @ 3.7GHz |
 | **吞吐量** | 150k msg/sec | 整个系统的写入速度 |
 | **内存占用** | 64 字节/消息 | LogMessage结构大小 |
