@@ -13,7 +13,7 @@ namespace logF {
 
 class Consumer {
 public:
-    Consumer(DoubleBuffer& double_buffer, const std::string& filepath);
+    Consumer(DoubleBuffer& double_buffer, const std::string& log_dir, size_t mmap_file_size = 1024 * 1024 * 16);
     void start();
     void stop();
     uint64_t get_processed_count() const { return message_count_; }
@@ -24,7 +24,6 @@ private:
     
     // 非原子变量
     DoubleBuffer& double_buffer_;
-    std::string filepath_;
     MMapFileWriter mmap_writer_;
     std::thread thread_;
     uint64_t message_count_ = 0;

@@ -6,13 +6,15 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <atomic>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
 
 namespace logF {
 
 class MMapFileWriter {
 public:
-    explicit MMapFileWriter(const std::string& filepath, size_t initial_size = 1024 * 1024 * 1024); // 1GB default
+    explicit MMapFileWriter(const std::string& log_dir, size_t file_size = 1024 * 1024 * 16); // 16MB default
     ~MMapFileWriter();
     
     // Delete copy constructor and assignment
@@ -33,26 +35,22 @@ public:
     void flush();
     
     // Get current write position
-    size_t position() const { return write_pos_.load(std::memory_order_acquire); }
+    size_t position() const { return write_pos_; }
     
     // Check if writer is ready
     bool is_open() const { return fd_ != -1 && mapped_memory_ != nullptr; }
 
 private:
-    // 非原子变量
-    std::string filepath_;
+    void generate_new_filepath();
+    bool rotate_file();
+
+    std::string log_dir_;
+    std::string current_filepath_;
+    int file_index_ = 0;
     int fd_ = -1;
     char* mapped_memory_ = nullptr;
     size_t file_size_ = 0;
-    
-    // 原子变量64字节对齐
-    alignas(64) std::atomic<size_t> write_pos_{0};
-    
-    // Expand the file and remap memory when needed
-    bool expand_file(size_t new_size);
-    
-    // Helper to calculate next power of 2
-    size_t next_power_of_2(size_t n);
+    size_t write_pos_ = 0;
 };
 
 }
