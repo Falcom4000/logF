@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <iostream>
 #include <chrono>
-#include <variant>
+#include <pthread.h>
 #include <ctime>
 
 namespace logF {
@@ -50,6 +50,17 @@ void Consumer::start() {
         return;
     }
     thread_ = std::thread(&Consumer::run, this);
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    int core_id = std::thread::hardware_concurrency() - 1;
+    if (core_id >= 0) {
+        CPU_SET(core_id, &cpuset);
+        int rc = pthread_setaffinity_np(thread_.native_handle(),
+                                        sizeof(cpu_set_t), &cpuset);
+        if (rc != 0) {
+            std::cerr << "Error setting thread affinity: " << rc << std::endl;
+        }
+    }
 }
 
 void Consumer::stop() {
