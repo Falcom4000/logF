@@ -10,7 +10,7 @@
 #include <fstream>
 
 constexpr int NUM_THREADS = 8;
-constexpr int NUM_MESSAGES_PER_THREAD = 1000000;
+constexpr int NUM_MESSAGES_PER_THREAD = 500000;
 
 static inline uint64_t rdtscp() {
     uint64_t low, high;

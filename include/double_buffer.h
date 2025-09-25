@@ -2,7 +2,6 @@
 
 #include <vector>
 #include <atomic>
-#include <shared_mutex>
 #include "log_message.h"
 
 namespace logF {
@@ -18,16 +17,37 @@ struct BufferView {
 class DoubleBuffer {
 public:
     DoubleBuffer(size_t capacity);
-    void write(LogMessage item);
+
+    template<typename F>
+    void write(F&& f) {
+        // Atomically increment position, get old state
+        uint64_t old_state = write_state_.fetch_add(1, std::memory_order_acq_rel);
+        
+        // Unpack old state
+        int buffer_idx = (old_state & INDEX_BIT) ? 1 : 0;
+        size_t pos = old_state & POSITION_MASK;
+
+        // If capacity is exceeded, do nothing (drop the message)
+        [[unlikely]]if (pos >= capacity_) {
+            return;
+        }
+        
+        // Invoke the function on the object at the allocated position
+        f(buffers_[buffer_idx][pos]);
+    }
+
     BufferView read_and_swap();
 
 private:
-    // 非原子变量放在前面
+    // Constants for state packing
+    static constexpr uint64_t INDEX_BIT = 1ULL << 63;
+    static constexpr uint64_t POSITION_MASK = ~(1ULL << 63);
+
+    // Non-atomic members first
     std::vector<LogMessage> buffers_[2];
     size_t capacity_;
     
-    // 将 write_buffer_index_ 和 write_pos_ 合并成一个64位原子变量
-    // 最高位是 buffer index, 其余位是 position
+    // Atomic state for write index and position
     alignas(64) std::atomic<uint64_t> write_state_{0};
 };
 

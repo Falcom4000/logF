@@ -16,18 +16,17 @@ public:
     void log(LogLevel level, const char* file, int line, const char* format, Args&&... args) {
         static_assert(sizeof...(args) <= MAX_LOG_ARGS, "Too many log arguments");
 
-        LogMessage msg{};  
-        msg.timestamp = std::chrono::system_clock::now();
-        msg.file = file;
-        msg.line = static_cast<uint16_t>(line > 65535 ? 65535 : line);  // 限制在uint16_t范围内
-        msg.level = static_cast<uint8_t>(level);
-        msg.format = format;
-        
-        size_t arg_idx = 0;
-        ( (msg.args[arg_idx++] = std::forward<Args>(args)), ... );
-        msg.num_args = sizeof...(args);
-
-        double_buffer_.write(std::move(msg));
+        double_buffer_.write([&](LogMessage& msg) {
+            msg.timestamp = std::chrono::system_clock::now();
+            msg.file = file;
+            msg.line = static_cast<uint16_t>(line > 65535 ? 65535 : line);
+            msg.level = static_cast<uint8_t>(level);
+            msg.format = format;
+            
+            size_t arg_idx = 0;
+            ( (msg.args[arg_idx++] = std::forward<Args>(args)), ... );
+            msg.num_args = sizeof...(args);
+        });
     }
 
 private:
