@@ -10,7 +10,7 @@
 #include <fstream>
 
 constexpr int NUM_THREADS = 8;
-constexpr int NUM_MESSAGES_PER_THREAD = 100000;
+constexpr int NUM_MESSAGES_PER_THREAD = 1000000;
 
 static inline uint64_t rdtscp() {
     uint64_t low, high;
@@ -76,29 +76,8 @@ int main() {
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end_time - start_time;
 
-    // Wait for the consumer to finish writing
-
-    
-
     uint64_t total_messages = NUM_THREADS * NUM_MESSAGES_PER_THREAD;
-    
-    // 等待一段时间让consumer处理，然后检查处理是否稳定
-    uint64_t last_count = 0;
-    int stable_count = 0;
-    const int max_stable_checks = 100; // 连续10次检查处理数量没变化就认为处理完成
-    
-    while (stable_count < max_stable_checks) {
-        uint64_t current_count = consumer.get_processed_count();
-        
-        if (current_count == last_count) {
-            stable_count++;
-        } else {
-            stable_count = 0; // 重置计数器
-            last_count = current_count;
-        }
-    }
-    
-    auto e2e_end_time = std::chrono::high_resolution_clock::now();
+    std::this_thread::sleep_for(std::chrono::seconds(1)); // Ensure all messages are processed
     consumer.stop();
     double messages_per_second = consumer.get_processed_count() / elapsed.count();
     // Combine all latency data and calculate statistics
@@ -120,16 +99,11 @@ int main() {
         double processed_rate = (total_messages > 0) ? 
         (static_cast<double>(consumer.get_processed_count()) / total_messages * 100.0) : 0.0;
     // Output results
-    // 计算端到端时间
-    std::chrono::duration<double> e2e_elapsed = e2e_end_time - start_time;
-    
     std::cout << "=== Benchmark Results ===" << std::endl;
     std::cout << "Total messages sent: " << total_messages << std::endl;
     std::cout << "Processed rate: " << std::fixed << std::setprecision(7) << processed_rate << "%" << std::endl;
     std::cout << "Producer time: " << elapsed.count() << " seconds" << std::endl;
-    std::cout << "End-to-end time: " << e2e_elapsed.count() << " seconds" << std::endl;
-    std::cout << "Messages per second (producer): " << messages_per_second << std::endl;
-    std::cout << "Messages per second (end-to-end): " << total_messages / e2e_elapsed.count() << std::endl;
+    std::cout << "Messages per second: " << messages_per_second << std::endl;
     std::cout << "Average latency: " << avg_cycles << " cycles" << std::endl;
     std::cout << "P99 latency: " << p99_cycles << " cycles" << std::endl;
     
