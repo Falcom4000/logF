@@ -40,7 +40,7 @@ double calculate_p99(std::vector<uint64_t>& data) {
 int main() {
     logF::DoubleBuffer double_buffer(1024 * 32 );
     logF::Logger logger(double_buffer);
-    logF::Consumer consumer(double_buffer, "benchmark_log.txt");
+    logF::Consumer consumer(double_buffer, "logs", 1024 * 1024 * 32);
     
     // Storage for all latency data from all threads
     std::vector<std::vector<uint64_t>> all_latencies(NUM_THREADS);

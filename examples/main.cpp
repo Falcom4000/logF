@@ -6,7 +6,7 @@
 int main() {
     logF::DoubleBuffer double_buffer(8192);
     logF::Logger logger(double_buffer);
-    logF::Consumer consumer(double_buffer, "log.txt");
+    logF::Consumer consumer(double_buffer, "logs");
 
     consumer.start();
 

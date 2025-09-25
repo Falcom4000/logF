@@ -39,8 +39,8 @@ struct TimeCache {
 };
 TimeCache time_cache;
 
-Consumer::Consumer(DoubleBuffer& double_buffer, const std::string& filepath)
-    : double_buffer_(double_buffer), filepath_(filepath), mmap_writer_(filepath), 
+Consumer::Consumer(DoubleBuffer& double_buffer, const std::string& log_dir, size_t mmap_file_size)
+    : double_buffer_(double_buffer), mmap_writer_(log_dir, mmap_file_size), 
       char_buffer_(65536*2) {}
 
 void Consumer::start() {
@@ -91,12 +91,23 @@ void Consumer::format_log(const LogMessage& msg) {
         char_buffer_.flush_to_mmap(mmap_writer_);
         char_buffer_.clear();
     }
-    
+    switch (static_cast<LogLevel>(msg.level)) {
+        case LogLevel::INFO:
+            char_buffer_.append("[INFO]");
+            break;
+        case LogLevel::WARNING:
+            char_buffer_.append("[WARNING]");
+            break;
+        case LogLevel::ERROR:
+            char_buffer_.append("[ERROR]");
+            break;
+    }
     time_cache.update_time_string(msg.timestamp);
     
     // Append all components directly to char buffer
     char_buffer_.append(time_cache.cached_time_str);
-    char_buffer_.append(" ");
+
+
     if (msg.file) [[likely]] {
         char_buffer_.append(msg.file);
     } else [[unlikely]] {
