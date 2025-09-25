@@ -8,7 +8,7 @@
 #include <immintrin.h>
 #include <iomanip>
 
-constexpr int NUM_THREADS = 4;
+constexpr int NUM_THREADS = 8;
 constexpr int NUM_MESSAGES_PER_THREAD = 1000000;
 
 static inline uint64_t rdtscp() {
@@ -32,7 +32,7 @@ double calculate_p99(std::vector<uint64_t>& data) {
 }
 
 int main() {
-    logF::DoubleBuffer double_buffer(1024 * 1024);
+    logF::DoubleBuffer double_buffer(1024 * 32 );
     logF::Logger logger(double_buffer);
     logF::Consumer consumer(double_buffer, "benchmark_log.txt");
     
@@ -54,9 +54,10 @@ int main() {
                 LOG_INFO(logger, "Thread %: message %, pi = %", i, j, 3.14159 + j);
                 uint64_t end_cycles = rdtscp();
                 thread_latencies.push_back(end_cycles - start_cycles);
-                std::this_thread::sleep_for(std::chrono::nanoseconds(100));
+                if (j % 10 == 0){
+                    std::this_thread::sleep_for(std::chrono::nanoseconds(100));
+                }
             }
-            
             // Move local latencies to global storage
             all_latencies[i] = std::move(thread_latencies);
         });

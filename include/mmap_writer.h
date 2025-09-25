@@ -12,7 +12,7 @@ namespace logF {
 
 class MMapFileWriter {
 public:
-    explicit MMapFileWriter(const std::string& filepath, size_t initial_size = 64 * 1024 * 1024); // 64MB default
+    explicit MMapFileWriter(const std::string& filepath, size_t initial_size = 1024 * 1024 * 1024); // 1GB default
     ~MMapFileWriter();
     
     // Delete copy constructor and assignment
