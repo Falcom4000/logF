@@ -7,9 +7,10 @@
 #include <algorithm>
 #include <immintrin.h>
 #include <iomanip>
+#include <fstream>
 
-constexpr int NUM_THREADS = 4;
-constexpr int NUM_MESSAGES_PER_THREAD = 4000000;
+constexpr int NUM_THREADS = 8;
+constexpr int NUM_MESSAGES_PER_THREAD = 1000000;
 
 static inline uint64_t rdtscp() {
     uint64_t low, high;
@@ -28,11 +29,16 @@ double calculate_p99(std::vector<uint64_t>& data) {
     std::sort(data.begin(), data.end());
     size_t index = static_cast<size_t>(data.size() * 0.99);
     if (index >= data.size()) index = data.size() - 1;
+    //  落盘分析
+    std::ofstream ofs("latency_analysis.txt");
+    for (const auto& latency : data) {
+        ofs << latency << "\n";
+    }
     return static_cast<double>(data[index]);
 }
 
 int main() {
-    logF::DoubleBuffer double_buffer(1024 * 1024 * 64);
+    logF::DoubleBuffer double_buffer(1024 * 32 );
     logF::Logger logger(double_buffer);
     logF::Consumer consumer(double_buffer, "benchmark_log.txt");
     
@@ -53,10 +59,11 @@ int main() {
                 uint64_t start_cycles = rdtscp();
                 LOG_INFO(logger, "Thread %: message %, pi = %", i, j, 3.14159 + j);
                 uint64_t end_cycles = rdtscp();
-                
                 thread_latencies.push_back(end_cycles - start_cycles);
+                if (j % 10 == 0){
+                    std::this_thread::sleep_for(std::chrono::nanoseconds(100));
+                }
             }
-            
             // Move local latencies to global storage
             all_latencies[i] = std::move(thread_latencies);
         });
@@ -69,7 +76,10 @@ int main() {
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end_time - start_time;
 
-    // 等待Consumer处理完缓冲区中的消息（端到端时间测量）
+    // Wait for the consumer to finish writing
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    
+
     uint64_t total_messages = NUM_THREADS * NUM_MESSAGES_PER_THREAD;
     std::cout << "等待Consumer处理完缓冲区中的消息..." << std::endl;
     
@@ -94,8 +104,7 @@ int main() {
     uint64_t processed_messages = consumer.stop();
     double messages_per_second = total_messages / elapsed.count();
 
-    double processed_rate = (total_messages > 0) ? 
-        (static_cast<double>(processed_messages) / total_messages * 100.0) : 0.0;
+
 
     // Combine all latency data and calculate statistics
     std::vector<uint64_t> combined_latencies;
@@ -113,7 +122,9 @@ int main() {
         total_cycles += cycles;
     }
     double avg_cycles = static_cast<double>(total_cycles) / combined_latencies.size();
-
+    uint64_t processed_messages = consumer.stop();
+        double processed_rate = (total_messages > 0) ? 
+        (static_cast<double>(processed_messages) / total_messages * 100.0) : 0.0;
     // Output results
     // 计算端到端时间
     std::chrono::duration<double> e2e_elapsed = e2e_end_time - start_time;

@@ -26,9 +26,9 @@ private:
     std::vector<LogMessage> buffers_[2];
     size_t capacity_;
     
-    // 原子变量使用64字节对齐，避免虚假共享
-    alignas(64) std::atomic<int> write_buffer_index_{0};    // 0 或 1，指示生产者当前写入哪个buffer
-    alignas(64) std::atomic<size_t> write_pos_{0};          // 当前写入buffer中的位置索引
+    // 将 write_buffer_index_ 和 write_pos_ 合并成一个64位原子变量
+    // 最高位是 buffer index, 其余位是 position
+    alignas(64) std::atomic<uint64_t> write_state_{0};
 };
 
 }

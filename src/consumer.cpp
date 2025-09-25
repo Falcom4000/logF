@@ -1,4 +1,5 @@
 #include "../include/consumer.h"
+#include <cstdint>
 #include <iostream>
 #include <chrono>
 #include <variant>
@@ -61,13 +62,23 @@ uint64_t Consumer::stop() {
 }
 
 void Consumer::run() {
+    uint64_t local_count = 0;
     while (running_.load(std::memory_order_acquire)) {
         auto buffer_view = double_buffer_.read_and_swap();
+        if( buffer_view.size == 0) {
+            if(local_count < 50) {
+                local_count++;
+                continue;
+            }
+            local_count = 0;
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            continue;
+        }
         for (const auto& msg : buffer_view) {
             format_log(msg);
             message_count_++;
         }
-        std::this_thread::yield();
+        
     }
     // Flush any remaining data when stopping
     char_buffer_.flush_to_mmap(mmap_writer_);
