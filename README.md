@@ -182,13 +182,17 @@ int main() {
 | spdlog | ~1,364,000 | ~2,576 | ~22,116 |
 | glog | ~862,000 | ~15,355 | ~98,648 |
 
-### benchmark
+### 不同日志库横向比较
 
 ![benchmark](./pics/benchmark.png)
 
 ### 延迟分布
 
 ![latency_distribution](./pics/latency_distribution.png)
+
+### 火焰图
+
+![flame_Graph](./pics/flamegraph.svg)
 
 ## 🔧 编译和安装
 
