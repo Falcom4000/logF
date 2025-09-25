@@ -52,13 +52,13 @@ void Consumer::start() {
     thread_ = std::thread(&Consumer::run, this);
 }
 
-uint64_t Consumer::stop() {
+void Consumer::stop() {
     running_.store(false, std::memory_order_release);
     if (thread_.joinable()) {
         thread_.join();
     }
     mmap_writer_.close();
-    return message_count_;
+    return;
 }
 
 void Consumer::run() {

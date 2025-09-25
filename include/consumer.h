@@ -15,7 +15,7 @@ class Consumer {
 public:
     Consumer(DoubleBuffer& double_buffer, const std::string& filepath);
     void start();
-    uint64_t stop();
+    void stop();
     uint64_t get_processed_count() const { return message_count_; }
 
 private:
