@@ -77,11 +77,10 @@ int main() {
     std::chrono::duration<double> elapsed = end_time - start_time;
 
     // Wait for the consumer to finish writing
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+
     
 
     uint64_t total_messages = NUM_THREADS * NUM_MESSAGES_PER_THREAD;
-    std::cout << "等待Consumer处理完缓冲区中的消息..." << std::endl;
     
     // 等待一段时间让consumer处理，然后检查处理是否稳定
     uint64_t last_count = 0;
@@ -97,7 +96,6 @@ int main() {
             stable_count = 0; // 重置计数器
             last_count = current_count;
         }
-        std::this_thread::yield();
     }
     
     auto e2e_end_time = std::chrono::high_resolution_clock::now();
@@ -122,7 +120,7 @@ int main() {
         total_cycles += cycles;
     }
     double avg_cycles = static_cast<double>(total_cycles) / combined_latencies.size();
-    uint64_t processed_messages = consumer.stop();
+    consumer.stop();
         double processed_rate = (total_messages > 0) ? 
         (static_cast<double>(processed_messages) / total_messages * 100.0) : 0.0;
     // Output results
