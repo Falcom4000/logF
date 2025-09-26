@@ -56,15 +56,15 @@ graph LR
 #### 1. LogMessage (64字节)
 
 ```cpp
-struct LogMessage {
-    std::chrono::system_clock::time_point timestamp;  // 8字节
-    const char* file;                                 // 8字节  
-    std::string_view format;                          // 16字节
-    std::array<LogVariant, 3> args;                   // 27+1字节
-    uint16_t line;                                    // 2字节
-    uint8_t level;                                    // 1字节
-    uint8_t num_args;                                 // 1字节
-};
+    std::chrono::system_clock::time_point timestamp;  // 8 bytes
+    const char* file;                                 // 8 bytes  
+    std::string_view format;                          // 16 bytes
+    std::array<ArgData, MAX_LOG_ARGS> args_data;       // 3 * 8 = 24 bytes
+    std::array<LogVariantType, MAX_LOG_ARGS> args_types; // 3 * 1 = 3 bytes
+    uint16_t line;                                    // 2 bytes
+    uint8_t level;                                    // 1 byte
+    uint8_t num_args;                                 // 1 byte
+    // Total: 8 + 8 + 16 + 24 + 3 + 2 + 1 + 1 = 63 bytes (fits within 64 bytes)
 ```
 
 #### 2. MpscRingBuffer (无锁队列)
@@ -75,20 +75,8 @@ struct LogMessage {
 - **占用-写入**: 生产者先声明占用，再声明写入；消费者只返回已写入的部分，避免竞态条件
 - **零拷贝**: 生产者入队时原地构造，消费者出队时只返回只读视图，不需要额外缓冲区
 
-#### 3. LogVariant (紧凑变体类型)
 
-```cpp
-struct LogVariant {  // 9字节 (使用__attribute__((packed)))
-    union {
-        int32_t i;
-        double d;
-        const char* s;
-    } data;      // 8字节
-    Type type;   // 1字节
-};
-```
-
-#### 4. Consumer Pipeline
+#### 3. Consumer Pipeline
 
 - **异步处理**: 独立线程处理格式化和I/O
 - **内存映射**: 零拷贝文件写入

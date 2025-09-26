@@ -132,7 +132,7 @@ void Consumer::format_log(const LogMessage& msg) {
     size_t find_pos = 0;
     size_t arg_index = 0;
 
-    while ((find_pos = msg.format.find('%', last_pos)) != std::string::npos && arg_index < msg.args.size()) {
+    while ((find_pos = msg.format.find('%', last_pos)) != std::string::npos && arg_index < msg.num_args) {
         // Append text before the placeholder
         if (find_pos > last_pos) {
             std::string_view substr = msg.format.substr(last_pos, find_pos - last_pos);
@@ -140,16 +140,17 @@ void Consumer::format_log(const LogMessage& msg) {
         }
         
         // Append the argument value
-        const auto& arg = msg.args[arg_index];
-        switch (arg.get_type()) {
-            case LogVariant::Type::CSTR:
-                char_buffer_.append(arg.as_cstr());
+        const auto& arg_type = msg.args_types[arg_index];
+        const auto& arg_data = msg.args_data[arg_index];
+        switch (arg_type) {
+            case LogVariantType::DOUBLE:
+                char_buffer_.append_number(arg_data.d);
                 break;
-            case LogVariant::Type::DOUBLE:
-                char_buffer_.append_number(arg.as_double());
+            case LogVariantType::INT:
+                char_buffer_.append_number(static_cast<long long>(arg_data.i));
                 break;
-            case LogVariant::Type::INT:
-                char_buffer_.append_number(static_cast<long long>(arg.as_int()));
+            case LogVariantType::NONE:
+                // Should not happen if arg_index < msg.num_args
                 break;
         }
         

@@ -47,8 +47,9 @@ void CharRingBuffer::append_number(long long num) {
     
     // 快速整数转换
     while (num > 0) {
-        *--p = '0' + (num % 10);
-        num /= 10;
+        long long q = num / 10;
+        *--p = '0' + (num - q * 10);
+        num = q;
     }
     
     if (negative) *--p = '-';
@@ -71,7 +72,7 @@ void CharRingBuffer::append_number(double num) {
     // 转换为整数处理（保留3位小数）
     long long scaled = static_cast<long long>(num * 1000 + 0.5);
     long long integer_part = scaled / 1000;
-    long long fractional_part = scaled % 1000;
+    long long fractional_part = scaled - integer_part * 1000;
     
     append_number(integer_part);
     
