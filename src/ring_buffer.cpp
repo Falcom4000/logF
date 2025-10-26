@@ -57,29 +57,71 @@ void CharRingBuffer::append_number(long long num) {
 }
 
 void CharRingBuffer::append_number(double num) {
-    // 简化的double处理，适合日志场景
+    // 科学计数法，保留四位有效数字
     if (num == 0.0) {
         append('0');
         return;
     }
     
-    if (num < 0) {
+    bool negative = num < 0;
+    if (negative) {
         append('-');
         num = -num;
     }
     
-    // 转换为整数处理（保留3位小数）
+    // 处理特殊值
+    if (num != num) { // NaN
+        append("nan");
+        return;
+    }
+    if (num > 1e308) { // Infinity
+        append("inf");
+        return;
+    }
+    
+    // 计算指数
+    int exponent = 0;
+    if (num >= 10.0) {
+        while (num >= 10.0) {
+            num /= 10.0;
+            exponent++;
+        }
+    } else if (num < 1.0) {
+        while (num < 1.0) {
+            num *= 10.0;
+            exponent--;
+        }
+    }
+    
+    // 现在 num 在 [1.0, 10.0) 范围内
+    // 保留四位有效数字：1位整数 + 3位小数
     long long scaled = static_cast<long long>(num * 1000 + 0.5);
-    long long integer_part = scaled / 1000;
+    
+    // 处理进位情况（比如 9.999 四舍五入变成 10.000）
+    if (scaled >= 10000) {
+        scaled = 1000;
+        exponent++;
+    }
+    
+    long long integer_part = scaled / 1000;  // 应该总是1-9
     long long fractional_part = scaled % 1000;
     
+    // 输出尾数部分
     append_number(integer_part);
+    append('.');
     
-    if (fractional_part > 0) {
-        append('.');
-        if (fractional_part < 100) append('0');
-        if (fractional_part < 10) append('0');
-        append_number(fractional_part);
+    // 输出三位小数（保证四位有效数字）
+    if (fractional_part < 100) append('0');
+    if (fractional_part < 10) append('0');
+    append_number(fractional_part);
+    
+    // 输出指数部分
+    append('e');
+    if (exponent >= 0) {
+        append_number(static_cast<long long>(exponent));
+    } else {
+        append('-');
+        append_number(static_cast<long long>(-exponent));
     }
 }
 
