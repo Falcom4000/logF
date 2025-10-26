@@ -29,7 +29,7 @@ struct TimeCache {
         
         // 使用strftime格式化基本时间部分
         char base_time[16];
-        std::strftime(base_time, sizeof(base_time), "%m-%d %H:%M:%S", local_tm);
+        std::strftime(base_time, sizeof(base_time), "%H:%M:%S", local_tm);
         
         // 添加毫秒部分
         std::snprintf(cached_time_str, sizeof(cached_time_str),
@@ -102,23 +102,21 @@ void Consumer::format_log(const LogMessage& msg) {
         char_buffer_.flush_to_mmap(mmap_writer_);
         char_buffer_.clear();
     }
-    switch (static_cast<LogLevel>(msg.level)) {
-        case LogLevel::INFO:
-            char_buffer_.append("[INFO]");
-            break;
-        case LogLevel::WARNING:
-            char_buffer_.append("[WARNING]");
-            break;
-        case LogLevel::ERROR:
-            char_buffer_.append("[ERROR]");
-            break;
-    }
     time_cache.update_time_string(msg.timestamp);
     
     // Append all components directly to char buffer
     char_buffer_.append(time_cache.cached_time_str);
-
-
+    switch (static_cast<LogLevel>(msg.level)) {
+        case LogLevel::INFO:
+            char_buffer_.append(" [INFO] ");
+            break;
+        case LogLevel::WARNING:
+            char_buffer_.append("[WARNING] ");
+            break;
+        case LogLevel::ERROR:
+            char_buffer_.append(" [ERROR] ");
+            break;
+    }
     if (msg.file) [[likely]] {
         char_buffer_.append(msg.file);
     } else [[unlikely]] {
