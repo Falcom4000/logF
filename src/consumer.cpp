@@ -4,6 +4,7 @@
 #include <chrono>
 #include <pthread.h>
 #include <ctime>
+#include <cstring>
 
 namespace logF {
 struct TimeCache {
@@ -69,7 +70,6 @@ void Consumer::stop() {
         thread_.join();
     }
     mmap_writer_.close();
-    return;
 }
 
 void Consumer::run() {
@@ -94,6 +94,7 @@ void Consumer::run() {
     char_buffer_.flush_to_mmap(mmap_writer_);
     char_buffer_.clear();
 }
+
 
 void Consumer::format_log(const LogMessage& msg) {
     // Check if we need to flush the buffer (leave some space for current message)
@@ -128,15 +129,21 @@ void Consumer::format_log(const LogMessage& msg) {
     char_buffer_.append(" ");
     
     // Process format string and arguments
-    size_t last_pos = 0;
-    size_t find_pos = 0;
+    const char* p = msg.format;
     size_t arg_index = 0;
 
-    while ((find_pos = msg.format.find('%', last_pos)) != std::string::npos && arg_index < msg.args.size()) {
+    while (*p != '\0' && arg_index < msg.args.size()) {
+        const char* percent_pos = strchr(p, '%');
+        
+        if (percent_pos == nullptr) {
+            // No more placeholders, append remaining text
+            char_buffer_.append(p);
+            break;
+        }
+        
         // Append text before the placeholder
-        if (find_pos > last_pos) {
-            std::string_view substr = msg.format.substr(last_pos, find_pos - last_pos);
-            char_buffer_.append(substr.data(), substr.size());
+        if (percent_pos > p) {
+            char_buffer_.append(p, percent_pos - p);
         }
         
         // Append the argument value
@@ -154,13 +161,12 @@ void Consumer::format_log(const LogMessage& msg) {
         }
         
         arg_index++;
-        last_pos = find_pos + 1;
+        p = percent_pos + 1;  // Move past the '%'
     }
     
-    // Append remaining text after last placeholder
-    if (last_pos < msg.format.size()) {
-        std::string_view remaining = msg.format.substr(last_pos);
-        char_buffer_.append(remaining.data(), remaining.size());
+    // Append any remaining text after all placeholders are processed
+    if (*p != '\0' && arg_index >= msg.args.size()) {
+        char_buffer_.append(p);
     }
     
     char_buffer_.append('\n');

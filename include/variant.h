@@ -13,7 +13,7 @@ struct __attribute__((packed)) LogVariant {
     };
     
     union {
-        int32_t i;
+        int64_t i;
         double d;
         const char* s;
     } data;

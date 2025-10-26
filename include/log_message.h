@@ -9,7 +9,7 @@
 
 namespace logF {
 
-constexpr size_t MAX_LOG_ARGS = 3;
+constexpr size_t MAX_LOG_ARGS = 4;
 
 enum class LogLevel : uint8_t {
     INFO = 0,
@@ -20,11 +20,12 @@ enum class LogLevel : uint8_t {
 struct LogMessage {
     std::chrono::system_clock::time_point timestamp;  // 8 bytes
     const char* file;                                 // 8 bytes  
-    std::string_view format;                          // 16 bytes
-    std::array<LogVariant, MAX_LOG_ARGS> args;        // 27 + 1 bytes
+    const char* format;                               // 8 bytes
+    std::array<LogVariant, MAX_LOG_ARGS> args;        // 4 * (8 + 1)bytes
     uint16_t line;                                    // 2 bytes
     uint8_t level;                                    // 1 byte
     uint8_t num_args;                                 // 1 byte
+                                                      // 1 byte padding
 
     LogMessage() : file(nullptr), format(""), line(0), level(0), num_args(0) {
         args.fill(LogVariant());

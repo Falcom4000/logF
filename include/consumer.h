@@ -11,6 +11,17 @@
 
 namespace logF {
 
+template<uint8_t Level>
+constexpr const char* get_log_level_string() {
+    if constexpr (static_cast<LogLevel>(Level) == LogLevel::INFO) {
+        return "[INFO]";
+    } else if constexpr (static_cast<LogLevel>(Level) == LogLevel::WARNING) {
+        return "[WARNING]";
+    } else if constexpr (static_cast<LogLevel>(Level) == LogLevel::ERROR) {
+        return "[ERROR]";
+    }
+}
+
 class Consumer {
 public:
     Consumer(MpscRingBuffer<LogMessage>& ring_buffer, const std::string& log_dir, size_t mmap_file_size = 1024 * 1024 * 16);
