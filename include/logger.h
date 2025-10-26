@@ -8,9 +8,12 @@
 
 namespace logF {
 
+template<LogLevel MinLevel = LogLevel::INFO>
 class Logger {
 public:
-    Logger(MpscRingBuffer<LogMessage>& ring_buffer) : ring_buffer_(ring_buffer) {}
+    explicit Logger(MpscRingBuffer<LogMessage>& ring_buffer) : ring_buffer_(ring_buffer) {}
+    
+    static constexpr LogLevel min_level() { return MinLevel; }
     
     template<typename... Args>
     void log(LogLevel level, const char* file, int line, const char* format, Args&&... args) {
@@ -26,6 +29,24 @@ private:
 // 提取相对路径的宏，避免存储完整的绝对路径
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
-#define LOG_INFO(logger, format, ...) (logger).log(logF::LogLevel::INFO, __FILENAME__, __LINE__, format, __VA_ARGS__)
-#define LOG_WARNING(logger, format, ...) (logger).log(logF::LogLevel::WARNING, __FILENAME__, __LINE__, format, __VA_ARGS__)
-#define LOG_ERROR(logger, format, ...) (logger).log(logF::LogLevel::ERROR, __FILENAME__, __LINE__, format, __VA_ARGS__)
+// 编译期判断的日志宏
+#define LOG_INFO(logger, format, ...) \
+    do { \
+        if constexpr (decltype(logger)::min_level() <= logF::LogLevel::INFO) { \
+            (logger).log(logF::LogLevel::INFO, __FILENAME__, __LINE__, format, __VA_ARGS__); \
+        } \
+    } while(0)
+
+#define LOG_WARNING(logger, format, ...) \
+    do { \
+        if constexpr (decltype(logger)::min_level() <= logF::LogLevel::WARNING) { \
+            (logger).log(logF::LogLevel::WARNING, __FILENAME__, __LINE__, format, __VA_ARGS__); \
+        } \
+    } while(0)
+
+#define LOG_ERROR(logger, format, ...) \
+    do { \
+        if constexpr (decltype(logger)::min_level() <= logF::LogLevel::ERROR) { \
+            (logger).log(logF::LogLevel::ERROR, __FILENAME__, __LINE__, format, __VA_ARGS__); \
+        } \
+    } while(0)
